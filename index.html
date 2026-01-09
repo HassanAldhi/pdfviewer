@@ -3,85 +3,156 @@
 <head>
   <meta charset="UTF-8" />
   <title>Darb Card Leaflets</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: Arial, sans-serif;
-    }
-
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background-color: #f0f2f5; }
 
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 12px 16px;
-      border-bottom: 1px solid #eee;
       background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      position: sticky; top: 0; z-index: 100;
+      gap: 12px;
     }
 
     .logo {
       height: 28px;
+      flex-shrink: 0;
     }
 
-    /* Dropdown */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      justify-content: flex-end;
+      min-width: 0;
+    }
+
     .lang-select {
-      padding: 6px 10px;
+      padding: 8px 32px 8px 10px;
       border-radius: 6px;
       border: 1px solid #ddd;
-      font-size: 13px;
-      background: #fff;
+      background-color: #fff;
+      font-size: 14px;
+      color: #333;
+      width: auto;
+      flex-shrink: 1;
+      max-width: 100%; 
+      text-overflow: ellipsis;
     }
 
-    iframe {
-      flex: 1;
-      width: 100%;
-      border: none;
+    .btn-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: transparent; 
+      border: 1px solid #ddd;
+      color: #555;
+      border-radius: 6px;
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
     }
+    
+    .btn-download:hover { background-color: #f5f5f5; border-color: #ccc; }
+    .btn-download:active { background-color: #eee; }
+    .btn-download svg { width: 20px; height: 20px; fill: currentColor; }
+
+    #pdf-container {
+      flex: 1; width: 100%; max-width: 800px; margin: 0 auto;
+      padding: 15px 10px; display: flex; flex-direction: column; gap: 15px; align-items: center;
+    }
+    canvas {
+        width: 100% !important; height: auto !important; display: block;
+        background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 6px;
+    }
+    .loading-container { display: flex; flex-direction: column; align-items: center; color: #888; gap: 10px; margin-top: 50px; font-size: 14px;}
+    .loading-spinner {
+        border: 3px solid #eee; border-top: 3px solid #666;
+        border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
   <div class="header">
-    <img src="logo.svg" alt="Darb Pay" class="logo">
+    <img src="logo.svg" alt="Darb Pay" class="logo" onerror="this.style.display='none'">
 
-    <select class="lang-select" onchange="setLang(this.value)">
-        <option value="ur-hi" style="font-size: large;">
-        🇮🇳 Urdu / 🇵🇰 Hindi
-        </option>
-        <option value="en-ar">
-        🇬🇧 English / 🇸🇦 Arabic
-        </option>
-    </select>
+    <div class="controls">
+        <select class="lang-select" onchange="renderPDF(this.value)">
+            <option value="ur-hi">🇮🇳 Urdu / 🇵🇰 Hindi</option>
+            <option value="en-ar">🇬🇧 English / 🇸🇦 Arabic</option>
+        </select>
+
+        <a id="download-link" href="#" download class="btn-download" title="Download PDF">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+        </a>
+    </div>
   </div>
 
-  <iframe id="pdfViewer"></iframe>
+  <div id="pdf-container"></div>
 
   <script>
     const pdfMap = {
         'ur-hi': 'pdf/leaflet-ur-hi.pdf',
         'en-ar': 'pdf/leaflet-en-ar.pdf'
-
     };
 
-    function setLang(lang) {
-      document.getElementById('pdfViewer').src = pdfMap[lang];
-    }
+    const container = document.getElementById('pdf-container');
+    const downloadLink = document.getElementById('download-link');
+    let currentRenderingTask = null;
 
-    // Default
-    // woii
-    setLang('ur-hi');
+    async function renderPDF(langKey) {
+      const url = pdfMap[langKey];
+      
+      downloadLink.href = url;
+      downloadLink.setAttribute('download', `Darb-Leaflet-${langKey}.pdf`);
+
+      container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><div>Memuat...</div></div>';
+
+      try {
+        const loadingTask = pdfjsLib.getDocument(url);
+        currentRenderingTask = loadingTask;
+        const pdf = await loadingTask.promise;
+
+        if (currentRenderingTask !== loadingTask) return;
+        container.innerHTML = ''; 
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          let targetScale = window.devicePixelRatio || 1;
+          if (targetScale < 2.5) targetScale = 2.5; 
+          const viewport = page.getViewport({ scale: targetScale });
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          const renderContext = { canvasContext: context, viewport: viewport };
+          container.appendChild(canvas);
+          await page.render(renderContext).promise;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        container.innerHTML = '<div style="color:red; padding:20px; text-align:center;">Gagal memuat PDF.</div>';
+      }
+    }
+    window.onload = () => { renderPDF('ur-hi'); };
   </script>
 
 </body>
 </html>
-
