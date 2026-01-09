@@ -3,26 +3,85 @@
 <head>
   <meta charset="UTF-8" />
   <title>Darb Card Leaflets</title>
-  <link rel="icon" type="image/png" href="favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
     }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      background: #fff;
+    }
+
+    .logo {
+      height: 28px;
+    }
+
+    /* Dropdown */
+    .lang-select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 13px;
+      background: #fff;
+    }
+
     iframe {
-      border: none;
+      flex: 1;
       width: 100%;
-      height: 100%;
+      border: none;
     }
   </style>
 </head>
 <body>
-  <iframe 
-    src="pdf/Darb Card Leaflet Urdu & Hindi.pdf"
-    loading="lazy">
-  </iframe>
+
+  <!-- Header -->
+  <div class="header">
+    <img src="logo.svg" alt="Darb Pay" class="logo">
+
+    <select class="lang-select" onchange="setLang(this.value)">
+        <option value="ur-hi" style="font-size: large;">
+        🇮🇳 Urdu / 🇵🇰 Hindi
+        </option>
+        <option value="en-ar">
+        🇬🇧 English / 🇸🇦 Arabic
+        </option>
+    </select>
+  </div>
+
+  <iframe id="pdfViewer"></iframe>
+
+  <script>
+    const pdfMap = {
+        'ur-hi': 'pdf/leaflet-ur-hi.pdf',
+        'en-ar': 'pdf/leaflet-en-ar.pdf'
+
+    };
+
+    function setLang(lang) {
+      document.getElementById('pdfViewer').src = pdfMap[lang];
+    }
+
+    // Default
+    // woii
+    setLang('ur-hi');
+  </script>
+
 </body>
 </html>
+
